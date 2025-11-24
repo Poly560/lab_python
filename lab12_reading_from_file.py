@@ -17,8 +17,9 @@ class BattleShipGame:
         self.robot_hits = [[0 for j in range(10)] for i in range(10)]
         self.l = len(self.player_matrix)
         self.letters = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З', 'И', 'К']
-        self.robot_last_hit = None
-        self.robot_hit_direction = None
+        self.robot_possible_moves = [(r, c) for r in range(10) for c in range(10)]
+        self.robot_last_hit = []
+        self.player_ships_remaining = [1, 1, 1, 1, 2, 2, 2, 3, 3, 4]
         self.all_ships_placed = False
 
     def new_game(self):
@@ -222,11 +223,9 @@ class BattleShipGame:
             return
         self.player_hits[x][y] = 1
         if self.robot_matrix[x][y] == 1:
-            # messagebox.showinfo("Попадание!", f"Вы попали в корабль противника! ({self.letters[x]}{y+1})")
             hit_again = True
             ship_sunk = self.check_ship_sunk(self.robot_matrix, self.player_hits, x, y)
             if ship_sunk:
-                # messagebox.showinfo("Потоплен!", "Вы потопили корабль противника!")
                 self.mark_sunk_ship_neighbors(self.robot_matrix, self.player_hits, x, y)
                 hit_again = False
             self.update_display()
@@ -235,38 +234,143 @@ class BattleShipGame:
             if hit_again:
                 return
             else:
-                self.root.after(500, self.robot_attack)
+                self.root.after(200, self.robot_attack)
         else:
             self.update_display()
             if self.check_game_over():
                 return
-            self.root.after(500, self.robot_attack)
+            self.root.after(200, self.robot_attack)
 
     def robot_attack(self):
         x, y = self.get_robot_target()
         self.robot_hits[x][y] = 1
+        
         if self.player_matrix[x][y] == 1:
-            self.robot_last_hit = (x, y)
-            # messagebox.showinfo("Робот атакует", f"Робот попал в ваш корабль! ({self.letters[x]}{y+1})")
-            hit_again = True
-            ship_sunk = self.check_ship_sunk(self.player_matrix, self.robot_hits, x, y)
-            if ship_sunk:
-                # messagebox.showinfo("Робот атакует", "Робот потопил ваш корабль!")
-                self.mark_sunk_ship_neighbors(self.player_matrix, self.robot_hits, x, y)
-                self.robot_last_hit = None
-                self.robot_hit_direction = None
-                hit_again = False
+            self.robot_last_hit.append([x, y])
+            if self.remove_hits(self.robot_last_hit, self.player_matrix, self.robot_hits, "robot"):
+                self.robot_last_hit = []
+            
             self.update_display()
             if self.check_game_over():
                 return
-            if hit_again:
-                self.root.after(500, self.robot_attack)
+            self.root.after(200, self.robot_attack)
         else:
-            if self.robot_hit_direction is not None:
-                self.robot_hit_direction = None
             self.update_display()
             if self.check_game_over():
                 return
+
+    def get_robot_target(self):
+        if self.robot_last_hit:
+            direction = None
+            if len(self.robot_last_hit) > 1:
+                row1, col1 = self.robot_last_hit[0]
+                row2, col2 = self.robot_last_hit[1]
+                if row1 == row2:
+                    direction = 'г'
+                elif col1 == col2:
+                    direction = 'в'
+            
+            last_hit_element = self.robot_last_hit[-1]
+            row, col = last_hit_element[0], last_hit_element[1]
+            
+            if direction == 'г':
+                targets = [(row, col-1), (row, col+1)]
+            elif direction == 'в':
+                targets = [(row-1, col), (row+1, col)]
+            else:
+                targets = [(row-1, col), (row+1, col), (row, col-1), (row, col+1)]
+            
+            for r, c in targets:
+                if 0 <= r < 10 and 0 <= c < 10 and (r, c) in self.robot_possible_moves:
+                    self.robot_possible_moves.remove((r, c))
+                    return [r, c]
+            for hit in self.robot_last_hit[:-1]:
+                row, col = hit[0], hit[1]
+                targets = [(row-1, col), (row+1, col), (row, col-1), (row, col+1)]
+                for r, c in targets:
+                    if 0 <= r < 10 and 0 <= c < 10 and (r, c) in self.robot_possible_moves:
+                        self.robot_possible_moves.remove((r, c))
+                        return [r, c]
+        if 4 in self.player_ships_remaining:
+            for _ in range(10):
+                side = random.choice([1, 2])
+                line = random.choice([4, 8])
+                if side == 1:
+                    fire = random.randint(0, line-1)
+                    row, col = line-fire-1, fire
+                else:
+                    fire = random.randint(0, line-1)
+                    row, col = 9 - (line - fire) + 1, 9-fire
+                if 0 <= row < 10 and 0 <= col < 10 and (row, col) in self.robot_possible_moves:
+                    self.robot_possible_moves.remove((row, col))
+                    return [row, col]
+                    
+        if 3 in self.player_ships_remaining:
+            for _ in range(10):
+                side = random.choice([1, 2])
+                if side == 1:
+                    line = random.choice([3, 6, 9])
+                    fire = random.randint(0, line-1)
+                    row, col = line-fire-1, fire
+                else:
+                    line = random.choice([2, 5, 8])
+                    fire = random.randint(0, line-1)
+                    row, col = 9 - (line - fire) + 1, 9-fire
+                if 0 <= row < 10 and 0 <= col < 10 and (row, col) in self.robot_possible_moves:
+                    self.robot_possible_moves.remove((row, col))
+                    return [row, col]
+                    
+        if 2 in self.player_ships_remaining:
+            for _ in range(10):
+                side = random.choice([1, 2])
+                line = random.choice([2, 4, 6, 8])
+                if side == 1:
+                    fire = random.randint(0, line-1)
+                    row, col = line-fire-1, fire
+                else:
+                    fire = random.randint(0, line-1)
+                    row, col = 9 - (line - fire) + 1, 9-fire
+                if 0 <= row < 10 and 0 <= col < 10 and (row, col) in self.robot_possible_moves:
+                    self.robot_possible_moves.remove((row, col))
+                    return [row, col]
+        if self.robot_possible_moves:
+            move = random.choice(self.robot_possible_moves)
+            self.robot_possible_moves.remove(move)
+            return list(move)
+        return [0, 0]
+
+    def remove_hits(self, ship_hits, board, hits_matrix, attacker):
+        if not ship_hits:
+            return False
+        ship_destroyed = True
+        for hit in ship_hits:  
+            row, col = hit[0], hit[1]
+            neighbors = [(row-1, col), (row+1, col), (row, col-1), (row, col+1)]
+            for r, c in neighbors:
+                if 0 <= r < 10 and 0 <= c < 10:
+                    if board[r][c] == 1 and hits_matrix[r][c] == 0:
+                        ship_destroyed = False
+                        break
+            if not ship_destroyed:
+                break
+                
+        if ship_destroyed:
+            cells_to_mark = set()
+            if attacker == "robot" and len(ship_hits) in self.player_ships_remaining:
+                self.player_ships_remaining.remove(len(ship_hits))
+            for hit in ship_hits:
+                row, col = hit[0], hit[1]
+                for dr in [-1, 0, 1]:
+                    for dc in [-1, 0, 1]:
+                        r, c = row + dr, col + dc
+                        if 0 <= r < 10 and 0 <= c < 10 and board[r][c] == 0:
+                            cells_to_mark.add((r, c))
+            for r, c in cells_to_mark:
+                hits_matrix[r][c] = 1
+                if (r, c) in self.robot_possible_moves:
+                    self.robot_possible_moves.remove((r, c))
+            return True
+        return False
 
     def mark_sunk_ship_neighbors(self, ship_matrix, hits_matrix, x, y):
         ship_cells = []
@@ -286,34 +390,6 @@ class BattleShipGame:
                     nx, ny = cell_x + dx, cell_y + dy
                     if 0 <= nx < 10 and 0 <= ny < 10 and hits_matrix[nx][ny] == 0:
                         hits_matrix[nx][ny] = 1
-
-    def get_robot_target(self):
-        if self.robot_last_hit is not None:
-            x, y = self.robot_last_hit
-            directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
-            if self.robot_hit_direction is None:
-                for dx, dy in directions:
-                    new_x, new_y = x + dx, y + dy
-                    if (0 <= new_x < 10 and 0 <= new_y < 10 and self.robot_hits[new_x][new_y] == 0):
-                        self.robot_hit_direction = (dx, dy)
-                        return new_x, new_y
-            else:
-                dx, dy = self.robot_hit_direction
-                new_x, new_y = x + dx, y + dy
-                if (0 <= new_x < 10 and 0 <= new_y < 10 and self.robot_hits[new_x][new_y] == 0):
-                    return new_x, new_y
-                else:
-                    self.robot_hit_direction = None
-                    for dx, dy in directions:
-                        new_x, new_y = x + dx, y + dy
-                        if (0 <= new_x < 10 and 0 <= new_y < 10 and self.robot_hits[new_x][new_y] == 0):
-                            self.robot_hit_direction = (dx, dy)
-                            return new_x, new_y
-        while True:
-            x = random.randint(0, 9)
-            y = random.randint(0, 9)
-            if self.robot_hits[x][y] == 0:
-                return x, y
 
     def check_ship_sunk(self, ship_matrix, hits_matrix, x, y):
         ship_cells = []
