@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-import random
+from random import randint, shuffle, choice
 
 class MazeGame:
     def __init__(self, root):
@@ -86,7 +86,7 @@ class MazeGame:
         
         while stack:
             x, y = stack[-1]
-            random.shuffle(directions)
+            shuffle(directions)
             found = False
             for dx, dy in directions:
                 nx, ny = x + dx, y + dy
@@ -110,22 +110,22 @@ class MazeGame:
         self.exits = []
         attempts = 0
         while len(self.exits) < required_exits and attempts < 200:
-            side = random.choice(['top', 'right', 'bottom', 'left'])
+            side = choice(['top', 'right', 'bottom', 'left'])
             if side == 'top':
-                x = random.randint(1, self.cols - 2)
+                x = randint(1, self.cols - 2)
                 y = 0
                 check_y = 1
             elif side == 'right':
                 x = self.cols - 1
-                y = random.randint(1, self.rows - 2)
+                y = randint(1, self.rows - 2)
                 check_x = x - 1
             elif side == 'bottom':
-                x = random.randint(1, self.cols - 2)
+                x = randint(1, self.cols - 2)
                 y = self.rows - 1
                 check_y = y - 1
             else:
                 x = 0
-                y = random.randint(1, self.rows - 2)
+                y = randint(1, self.rows - 2)
                 check_x = 1
             can_be_exit = False
             if side in ['top', 'bottom']:
