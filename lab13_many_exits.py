@@ -80,7 +80,7 @@ class MazeGame:
         self.reset_game_state()
         self.maze = [[1 for _ in range(self.cols)] for _ in range(self.rows)]
         start_x, start_y = self.start_pos
-        self.maze[start_y][start_x] = 0
+        self.maze[start_x][start_y] = 0
         stack = [(start_x, start_y)]
         directions = [(0, 2), (2, 0), (0, -2), (-2, 0)]
         
@@ -163,7 +163,7 @@ class MazeGame:
                 elif self.maze[y][x] == 1:
                     color = self.colors['wall']
                 else:
-                    color = 'white'
+                    color = self.colors['path']
                 rect_id = self.canvas.create_rectangle(
                     x * self.cell_size, y * self.cell_size,
                     (x + 1) * self.cell_size, (y + 1) * self.cell_size,
